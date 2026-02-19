@@ -1,9 +1,367 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <title>Website Oonsurono</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel</title>
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Segoe UI',sans-serif;
+}
+
+body{
+min-height:100vh;
+background-size:cover;
+background-position:center;
+background-repeat:no-repeat;
+}
+
+/* Overlay */
+.overlay{
+background:rgba(0,0,0,0.65);
+min-height:100vh;
+padding:30px 20px;
+color:white;
+}
+
+/* TOP BAR FIX */
+.top-bar{
+display:flex;
+flex-wrap:wrap; /* supaya tidak numpuk di HP */
+justify-content:space-between;
+align-items:center;
+gap:15px;
+margin-bottom:30px;
+}
+
+.top-bar h1{
+font-size:26px;
+font-weight:600;
+}
+
+/* Container tombol */
+.top-actions{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+}
+
+/* Tombol umum */
+.top-actions button{
+padding:10px 18px;
+border:none;
+border-radius:10px;
+cursor:pointer;
+font-weight:500;
+transition:0.2s;
+}
+
+/* Warna tombol */
+.setting-btn{
+background:#1e88e5;
+color:white;
+}
+
+.tambah-btn{
+background:#1565c0;
+color:white;
+}
+
+/* Efek hover */
+.top-actions button:hover{
+opacity:0.85;
+transform:scale(1.03);
+}
+
+/* GALLERY */
+.gallery{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:20px;
+}
+
+.card{
+background:rgba(255,255,255,0.1);
+border-radius:15px;
+overflow:hidden;
+backdrop-filter:blur(8px);
+}
+
+.card img{
+width:100%;
+height:200px;
+object-fit:cover;
+}
+
+.card-content{
+padding:15px;
+}
+
+.card-content h4{
+margin-bottom:5px;
+}
+
+.card-content p{
+font-size:13px;
+opacity:0.9;
+}
+
+.card-buttons{
+margin-top:10px;
+display:flex;
+justify-content:space-between;
+gap:10px;
+}
+
+.card-buttons button{
+flex:1;
+padding:7px;
+font-size:12px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+}
+
+.edit-btn{
+background:#ffc107;
+color:black;
+}
+
+.delete-btn{
+background:#dc3545;
+color:white;
+}
+
+/* MODAL */
+.modal{
+display:none;
+position:fixed;
+inset:0;
+background:rgba(0,0,0,0.6);
+justify-content:center;
+align-items:center;
+padding:20px;
+}
+
+.modal-content{
+background:white;
+color:black;
+width:100%;
+max-width:500px;
+padding:25px;
+border-radius:15px;
+}
+
+.modal-content input,
+.modal-content textarea{
+width:100%;
+padding:10px;
+margin:8px 0 12px;
+border-radius:8px;
+border:1px solid #ccc;
+}
+
+.modal-content button{
+padding:10px 15px;
+border:none;
+border-radius:8px;
+background:#1e88e5;
+color:white;
+cursor:pointer;
+}
+</style>
 </head>
 <body>
-  <h1>Website Berhasil Online 🎉</h1>
+
+<div class="overlay">
+
+<div class="top-bar">
+<h1>Admin Galeri</h1>
+
+<div class="top-actions">
+<button class="setting-btn" onclick="openSetting()">⚙ Setting</button>
+<button class="tambah-btn" onclick="openFoto()">➕ Tambah Foto</button>
+</div>
+
+</div>
+
+<div class="gallery" id="gallery"></div>
+
+</div>
+
+<!-- ================= SETTING MODAL ================= -->
+<div class="modal" id="settingModal">
+<div class="modal-content">
+<h3>Setting Halaman</h3>
+<input type="text" id="inputJudul" placeholder="Judul">
+<input type="text" id="inputSubjudul" placeholder="Subjudul">
+<input type="file" id="uploadBackground" accept="image/*">
+<button onclick="simpanSetting()">Simpan</button>
+<button onclick="closeModal('settingModal')">Tutup</button>
+</div>
+</div>
+
+<!-- ================= FOTO MODAL ================= -->
+<div class="modal" id="fotoModal">
+<div class="modal-content">
+<h3 id="modalTitle">Tambah Foto</h3>
+<input type="file" id="uploadFoto" accept="image/*">
+<input type="text" id="judulFoto" placeholder="Judul Foto">
+<textarea id="deskripsiFoto" placeholder="Deskripsi"></textarea>
+<input type="text" id="linkFoto" placeholder="Link tujuan (https://)">
+<button onclick="simpanFoto()">Simpan Foto</button>
+<button onclick="closeModal('fotoModal')">Tutup</button>
+</div>
+</div>
+
+<script>
+
+let editIndex=null;
+
+/* BACKGROUND IKUT INDEX */
+let bg=localStorage.getItem("background");
+if(bg){
+document.body.style.backgroundImage=`url(${bg})`;
+}
+
+/* LOAD FOTO */
+function loadGallery(){
+let photos=JSON.parse(localStorage.getItem("photos"))||[];
+let gallery=document.getElementById("gallery");
+gallery.innerHTML="";
+
+photos.forEach((p,index)=>{
+let card=document.createElement("div");
+card.className="card";
+
+card.innerHTML=`
+<img src="${p.image}">
+<div class="card-content">
+<h4>${p.title||''}</h4>
+<p>${p.desc||''}</p>
+<div class="card-buttons">
+<button class="edit-btn" onclick="editFoto(${index})">Edit</button>
+<button class="delete-btn" onclick="hapusFoto(${index})">Hapus</button>
+</div>
+</div>
+`;
+
+gallery.appendChild(card);
+});
+}
+
+/* OPEN MODAL */
+function openSetting(){
+document.getElementById("settingModal").style.display="flex";
+}
+
+function openFoto(){
+editIndex=null;
+document.getElementById("modalTitle").innerText="Tambah Foto";
+document.getElementById("fotoModal").style.display="flex";
+}
+
+function closeModal(id){
+document.getElementById(id).style.display="none";
+}
+
+/* SIMPAN SETTING */
+function simpanSetting(){
+localStorage.setItem("judul",inputJudul.value);
+localStorage.setItem("subjudul",inputSubjudul.value);
+
+let file=document.getElementById("uploadBackground").files[0];
+if(file){
+let reader=new FileReader();
+reader.onload=function(e){
+localStorage.setItem("background",e.target.result);
+document.body.style.backgroundImage=`url(${e.target.result})`;
+}
+reader.readAsDataURL(file);
+}
+
+alert("Setting disimpan");
+closeModal("settingModal");
+}
+
+/* TAMBAH / EDIT FOTO */
+function simpanFoto(){
+let photos=JSON.parse(localStorage.getItem("photos"))||[];
+
+let file=document.getElementById("uploadFoto").files[0];
+
+function save(imageData){
+let data={
+image:imageData,
+title:judulFoto.value,
+desc:deskripsiFoto.value,
+link:linkFoto.value
+};
+
+if(editIndex!==null){
+photos[editIndex]=data;
+}else{
+photos.push(data);
+}
+
+localStorage.setItem("photos",JSON.stringify(photos));
+resetForm();
+loadGallery();
+closeModal("fotoModal");
+}
+
+if(file){
+let reader=new FileReader();
+reader.onload=function(e){
+save(e.target.result);
+}
+reader.readAsDataURL(file);
+}else{
+if(editIndex!==null){
+save(photos[editIndex].image);
+}else{
+alert("Pilih gambar dulu!");
+}
+}
+}
+
+/* EDIT */
+function editFoto(index){
+let photos=JSON.parse(localStorage.getItem("photos"))||[];
+let p=photos[index];
+
+editIndex=index;
+judulFoto.value=p.title;
+deskripsiFoto.value=p.desc;
+linkFoto.value=p.link;
+
+document.getElementById("modalTitle").innerText="Edit Foto";
+document.getElementById("fotoModal").style.display="flex";
+}
+
+/* HAPUS */
+function hapusFoto(index){
+let photos=JSON.parse(localStorage.getItem("photos"))||[];
+photos.splice(index,1);
+localStorage.setItem("photos",JSON.stringify(photos));
+loadGallery();
+}
+
+/* RESET FORM */
+function resetForm(){
+uploadFoto.value="";
+judulFoto.value="";
+deskripsiFoto.value="";
+linkFoto.value="";
+}
+
+loadGallery();
+
+</script>
+
 </body>
-  </html>
+</html>
